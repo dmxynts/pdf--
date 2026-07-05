@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BabelDOC · PDF 智能翻译</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config={theme:{extend:{colors:{primary:'#4a7cfe','primary-dark':'#3260e0',accent:'#7c5cfc'}}}}
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:linear-gradient(135deg,#f5f3ff 0%,#ede9fe 25%,#e0e7ff 50%,#fce7f3 100%);
+  min-height:100vh;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+.sidebar-scroll::-webkit-scrollbar{width:4px}
+.sidebar-scroll::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.08);border-radius:2px}
+.sidebar-scroll::-webkit-scrollbar-track{background:transparent}
+.upload-zone.dragover{border-color:#4a7cfe !important;background:rgba(74,124,254,0.06) !important}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.progress-active{background:linear-gradient(90deg,#4a7cfe 25%,#7c5cfc 50%,#4a7cfe 75%);background-size:200% 100%;animation:shimmer 1.5s ease-in-out infinite}
+.glass{background:rgba(255,255,255,0.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.35)}
+input[type=checkbox].custom{appearance:none;width:15px;height:15px;border-radius:4px;border:1.5px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.6);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+input[type=checkbox].custom:checked{background:#4a7cfe;border-color:#4a7cfe}
+input[type=checkbox].custom:checked::after{content:"✓";color:#fff;font-size:10px;font-weight:700}
+input[type=range]{-webkit-appearance:none;height:4px;border-radius:2px;background:rgba(255,255,255,0.5);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#4a7cfe;cursor:pointer;box-shadow:0 1px 4px rgba(74,124,254,0.3)}
+</style>
+</head>
+<body>
+
+<div class="max-w-[1480px] mx-auto px-6 flex flex-col" style="min-height:100vh">
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="pt-4 pb-3">
+    <div class="glass rounded-xl px-5 py-3 flex items-center justify-between shadow-sm">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white shrink-0 text-lg">📄</div>
+        <div>
+          <h1 class="text-xl font-bold text-[#1a1d26]">BabelDOC</h1>
+          <p class="text-sm text-[#8b93a5]">PDF 智能双语翻译 · 保留排版</p>
+        </div>
+      </div>
+      <span class="text-sm text-[#8b93a5] border border-white/30 rounded-full px-3 py-1">v0.2</span>
+    </div>
+  </header>
+
+  <!-- ═══ MAIN ═══ -->
+  <div class="flex gap-5" style="flex:1">
+
+    <!-- ===== Sidebar ===== -->
+    <aside class="w-[290px] shrink-0">
+      <div class="glass rounded-2xl p-5 shadow-sm sidebar-scroll" style="position:sticky;top:16px;max-height:calc(100vh - 100px);overflow-y:auto">
+
+        <!-- Engine -->
+        <section class="pb-4 mb-4 border-b border-white/20">
+          <p class="text-sm font-semibold text-[#8b93a5] uppercase tracking-wider mb-3">🌐 翻译引擎</p>
+          <div class="flex gap-1.5 mb-3" id="enginePills">
+            <label class="flex-1 cursor-pointer">
+              <input type="radio" name="engine" value="deepseek" checked class="hidden peer/e">
+              <span class="block text-center text-sm font-medium px-2 py-2 rounded-lg bg-white/40 border border-transparent peer-checked/e:border-primary peer-checked/e:bg-blue-50/80 peer-checked/e:text-primary-dark peer-checked/e:shadow-sm hover:bg-white/70 transition-all">🧠 DeepSeek</span>
+            </label>
+            <label class="flex-1 cursor-pointer">
+              <input type="radio" name="engine" value="google" class="hidden peer/e">
+              <span class="block text-center text-sm font-medium px-2 py-2 rounded-lg bg-white/40 border border-transparent peer-checked/e:border-primary peer-checked/e:bg-blue-50/80 peer-checked/e:text-primary-dark peer-checked/e:shadow-sm hover:bg-white/70 transition-all">🔮 Google</span>
+            </label>
+            <label class="flex-1 cursor-pointer">
+              <input type="radio" name="engine" value="deepl" class="hidden peer/e">
+              <span class="block text-center text-sm font-medium px-2 py-2 rounded-lg bg-white/40 border border-transparent peer-checked/e:border-primary peer-checked/e:bg-blue-50/80 peer-checked/e:text-primary-dark peer-checked/e:shadow-sm hover:bg-white/70 transition-all">🌍 DeepL</span>
+            </label>
+          </div>
+          <div class="space-y-2.5">
+            <input type="password" id="apiKey" placeholder="API Key" class="w-full text-sm px-3 py-2.5 rounded-lg bg-white/60 border border-white/30 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-[#8b93a5]/60">
+            <select id="model" class="w-full text-sm px-3 py-2.5 rounded-lg bg-white/60 border border-white/30 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-[#1a1d26]">
+              <option value="">默认模型</option>
+            </select>
+            <input type="text" id="baseUrl" placeholder="Base URL（可选）" class="w-full text-sm px-3 py-2.5 rounded-lg bg-white/60 border border-white/30 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-[#8b93a5]/60">
+          </div>
+        </section>
+
+        <!-- Language -->
+        <section class="pb-4 mb-4 border-b border-white/20">
+          <p class="text-sm font-semibold text-[#8b93a5] uppercase tracking-wider mb-3">🌍 语言</p>
+          <div class="flex gap-2">
+            <div class="flex-1">
+              <p class="text-xs text-[#8b93a5] mb-1">源语言</p>
+              <input type="text" id="langIn" value="{{ source_lang }}" class="w-full text-sm px-3 py-2.5 rounded-lg bg-white/60 border border-white/30 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+            </div>
+            <div class="flex-1">
+              <p class="text-xs text-[#8b93a5] mb-1">目标语言</p>
+              <input type="text" id="langOut" value="{{ target_lang }}" class="w-full text-sm px-3 py-2.5 rounded-lg bg-white/60 border border-white/30 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+            </div>
+          </div>
+        </section>
+
+        <!-- Output -->
+        <section class="pb-4 mb-4 border-b border-white/20">
+          <p class="text-sm font-semibold text-[#8b93a5] uppercase tracking-wider mb-3">⚙️ 输出</p>
+          <div class="flex gap-4 mb-3">
+            <label class="flex items-center gap-1.5 cursor-pointer select-none">
+              <input type="checkbox" id="dual" checked class="custom">
+              <span class="text-sm text-[#1a1d26]">双语版</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer select-none">
+              <input type="checkbox" id="mono" checked class="custom">
+              <span class="text-sm text-[#1a1d26]">单语版</span>
+            </label>
+          </div>
+          <div class="flex gap-1.5">
+            <label class="flex-1 cursor-pointer">
+              <input type="radio" name="watermark" value="水印版" checked class="hidden peer/w">
+              <span class="block text-center text-sm px-2 py-2 rounded-lg bg-white/40 border border-white/30 peer-checked/w:border-primary peer-checked/w:bg-blue-50/80 peer-checked/w:text-primary-dark hover:bg-white/70 transition-all">水印版</span>
+            </label>
+            <label class="flex-1 cursor-pointer">
+              <input type="radio" name="watermark" value="无水印" class="hidden peer/w">
+              <span class="block text-center text-sm px-2 py-2 rounded-lg bg-white/40 border border-white/30 peer-checked/w:border-primary peer-checked/w:bg-blue-50/80 peer-checked/w:text-primary-dark hover:bg-white/70 transition-all">无水印</span>
+            </label>
+            <label class="flex-1 cursor-pointer">
+              <input type="radio" name="watermark" value="两者都输出" class="hidden peer/w">
+              <span class="block text-center text-sm px-2 py-2 rounded-lg bg-white/40 border border-white/30 peer-checked/w:border-primary peer-checked/w:bg-blue-50/80 peer-checked/w:text-primary-dark hover:bg-white/70 transition-all">都输出</span>
+            </label>
+          </div>
+        </section>
+
+        <!-- Advanced -->
+        <section>
+          <button onclick="toggleAdvanced()" class="w-full flex items-center justify-between text-sm font-semibold text-[#8b93a5] uppercase tracking-wider mb-3 bg-transparent border-none cursor-pointer">
+            <span>🔧 高级设置</span>
+            <span id="advArrow" class="transition-transform duration-200 text-sm">▶</span>
+          </button>
+          <div id="advancedPanel" class="hidden space-y-3">
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs text-[#8b93a5] uppercase">QPS</label>
+                <span class="text-sm text-[#8b93a5]" id="qpsVal">{{ default_qps }}</span>
+              </div>
+              <input type="range" id="qps" min="1" max="20" value="{{ default_qps }}">
+            </div>
+            <div>
+              <label class="text-xs text-[#8b93a5] uppercase mb-1 block">页码范围</label>
+              <input type="text" id="pages" placeholder="如 1-5,7,10-" class="w-full text-sm px-3 py-2.5 rounded-lg bg-white/60 border border-white/30 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-[#8b93a5]/60">
+            </div>
+            <label class="flex items-center gap-1.5 cursor-pointer select-none">
+              <input type="checkbox" id="autoGlossary" checked class="custom">
+              <span class="text-sm text-[#1a1d26]">自动提取术语表</span>
+            </label>
+            <div>
+              <label class="text-xs text-[#8b93a5] uppercase mb-1 block">词汇表 CSV</label>
+              <input type="file" id="glossary" accept=".csv" class="w-full text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20">
+            </div>
+          </div>
+        </section>
+
+      </div>
+      <p id="saveIndicator" class="text-xs text-center text-[#8b93a5] mt-2 opacity-0 transition-opacity duration-300">✓ 已保存</p>
+    </aside>
+
+    <!-- ===== Main Content ===== -->
+    <main class="flex-1 min-w-0 flex flex-col">
+
+      <!-- Upload -->
+      <div id="uploadZone" class="glass border-2 border-dashed border-primary/25 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all hover:border-primary hover:bg-white/70" style="padding:72px 24px;min-height:260px">
+        <div class="text-5xl mb-3">📄</div>
+        <p class="text-[#1a1d26] text-lg font-medium">拖拽或点击上传 PDF 文件</p>
+        <p class="text-[#8b93a5] mt-1">支持同时上传多个文件</p>
+        <input type="file" id="fileInput" multiple accept=".pdf" class="hidden">
+      </div>
+
+      <!-- File List -->
+      <div id="fileList" class="mt-3 space-y-1.5 hidden"></div>
+
+      <!-- Translate Button -->
+      <button id="translateBtn" class="w-full mt-4 bg-gradient-to-r from-primary to-accent text-white font-semibold text-base py-4 rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-lg disabled:hover:shadow-primary/20">
+        开始翻译
+      </button>
+
+      <!-- Progress -->
+      <div id="progressArea" class="mt-4 hidden">
+        <div class="glass rounded-xl p-4">
+          <div class="flex justify-between items-center mb-2">
+            <span id="progressStatus" class="text-[#1a1d26]">准备中...</span>
+            <span id="progressPercent" class="text-[#8b93a5] font-medium">0%</span>
+          </div>
+          <div class="h-2 bg-white/40 rounded-full overflow-hidden">
+            <div id="progressBar" class="h-full rounded-full" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="resultsArea" class="mt-4 hidden">
+        <div class="glass rounded-2xl p-5">
+          <p class="text-sm font-semibold text-[#8b93a5] uppercase tracking-wider mb-3">翻译完成</p>
+          <div id="resultsList" class="space-y-2"></div>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div id="errorArea" class="mt-4 hidden">
+        <div class="bg-red-50/80 backdrop-blur-xl border border-red-200/50 rounded-xl p-4">
+          <p class="text-sm text-red-600" id="errorMsg"></p>
+        </div>
+      </div>
+
+      <!-- Spacer + Footer -->
+      <div class="flex-1"></div>
+      <footer class="text-center py-4">
+        <p class="text-sm text-[#8b93a5]">Powered by <a href="https://github.com/funstory-ai/BabelDOC" target="_blank" class="text-primary font-medium hover:underline">BabelDOC</a></p>
+      </footer>
+    </main>
+  </div>
+</div>
+
+<script>
+// ─── State ───
+let selectedFiles = [];
+let saveTimer = null;
+
+// ─── Auto-save settings ───
+const SETTINGS_KEYS = ['apiKey','model','baseUrl','langIn','langOut','engine','watermark','dual','mono','qps','pages','autoGlossary'];
+
+function saveSettings() {
+  const data = {};
+  SETTINGS_KEYS.forEach(k => {
+    const el = document.getElementById(k);
+    if (el) {
+      if (el.type === 'checkbox') data[k] = el.checked;
+      else data[k] = el.value;
+    }
+  });
+  // engine radio
+  const eng = document.querySelector('input[name="engine"]:checked');
+  if (eng) data.engine = eng.value;
+  // watermark radio
+  const wm = document.querySelector('input[name="watermark"]:checked');
+  if (wm) data.watermark = wm.value;
+  localStorage.setItem('babeldoc_settings', JSON.stringify(data));
+  showSaved();
+}
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem('babeldoc_settings');
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    Object.entries(data).forEach(([k, v]) => {
+      const el = document.getElementById(k);
+      if (el) {
+        if (el.type === 'checkbox') el.checked = v;
+        else el.value = v;
+      }
+    });
+    // engine radio
+    if (data.engine) {
+      const eng = document.querySelector(`input[name="engine"][value="${data.engine}"]`);
+      if (eng) eng.checked = true;
+    }
+    // watermark radio
+    if (data.watermark) {
+      const wm = document.querySelector(`input[name="watermark"][value="${data.watermark}"]`);
+      if (wm) wm.checked = true;
+    }
+    document.getElementById('qpsVal').textContent = document.getElementById('qps').value;
+  } catch(e) {}
+}
+
+function triggerSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveSettings, 400);
+}
+
+let saveIndicatorTimer = null;
+function showSaved() {
+  const el = document.getElementById('saveIndicator');
+  if (!el) return;
+  el.classList.remove('opacity-0');
+  clearTimeout(saveIndicatorTimer);
+  saveIndicatorTimer = setTimeout(() => el.classList.add('opacity-0'), 1500);
+}
+
+// auto-save on input
+document.addEventListener('input', e => {
+  if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName) &&
+      e.target.closest('.sidebar-scroll')) triggerSave();
+});
+document.addEventListener('change', e => {
+  if (e.target.type === 'checkbox' || e.target.type === 'radio') triggerSave();
+});
+
+// ─── Upload Zone ───
+const zone = document.getElementById('uploadZone');
+const input = document.getElementById('fileInput');
+
+zone.addEventListener('click', () => input.click());
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+zone.addEventListener('drop', e => {
+  e.preventDefault();
+  zone.classList.remove('dragover');
+  handleFiles(Array.from(e.dataTransfer.files));
+});
+input.addEventListener('change', () => handleFiles(Array.from(input.files)));
+
+function handleFiles(files) {
+  const pdfs = files.filter(f => f.name.toLowerCase().endsWith('.pdf'));
+  if (!pdfs.length) return;
+  // Deduplicate by name
+  const existing = new Set(selectedFiles.map(f => f.name));
+  for (const f of pdfs) {
+    if (!existing.has(f.name)) {
+      selectedFiles.push(f);
+      existing.add(f.name);
+    }
+  }
+  renderFileList();
+}
+
+function removeFile(name) {
+  selectedFiles = selectedFiles.filter(f => f.name !== name);
+  renderFileList();
+}
+
+function renderFileList() {
+  const el = document.getElementById('fileList');
+  const btn = document.getElementById('translateBtn');
+  if (!selectedFiles.length) {
+    el.classList.add('hidden');
+    el.innerHTML = '';
+    btn.disabled = true;
+    return;
+  }
+  btn.disabled = false;
+  el.classList.remove('hidden');
+  el.innerHTML = selectedFiles.map(f =>
+    `<div class="glass rounded-lg px-4 py-3 flex items-center justify-between">
+      <span class="text-[#1a1d26] truncate">📄 ${f.name}</span>
+      <button onclick="removeFile('${f.name}')" class="text-[#8b93a5] hover:text-red-500 text-sm ml-3 bg-transparent border-none cursor-pointer shrink-0">✕</button>
+    </div>`
+  ).join('');
+}
+
+// ─── QPS Slider ───
+document.getElementById('qps').addEventListener('input', function() {
+  document.getElementById('qpsVal').textContent = this.value;
+});
+
+// ─── Model dropdown per engine ───
+const ENGINE_MODELS = {
+  deepseek: ['deepseek-chat', 'deepseek-reasoner'],
+  google: ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.5-pro'],
+  deepl: [],
+};
+
+function updateModelOptions() {
+  const eng = document.querySelector('input[name="engine"]:checked');
+  const sel = document.getElementById('model');
+  const current = sel.value;
+  const models = ENGINE_MODELS[eng?.value] || [];
+  sel.innerHTML = '<option value="">默认模型</option>' +
+    models.map(m => `<option value="${m}"${m === current ? ' selected' : ''}>${m}</option>`).join('');
+}
+
+document.querySelectorAll('input[name="engine"]').forEach(r => {
+  r.addEventListener('change', updateModelOptions);
+});
+
+// ─── Restore saved settings ───
+loadSettings();
+updateModelOptions();
+
+// ─── Advanced Toggle ───
+function toggleAdvanced() {
+  const panel = document.getElementById('advancedPanel');
+  const arrow = document.getElementById('advArrow');
+  const isOpen = !panel.classList.contains('hidden');
+  panel.classList.toggle('hidden');
+  arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
+}
+
+// ─── Translation ───
+document.getElementById('translateBtn').addEventListener('click', async function() {
+  if (!selectedFiles.length) return;
+
+  const btn = this;
+  btn.disabled = true;
+  btn.textContent = '翻译中...';
+
+  // Show progress
+  const progressArea = document.getElementById('progressArea');
+  const progressBar = document.getElementById('progressBar');
+  const progressStatus = document.getElementById('progressStatus');
+  const progressPercent = document.getElementById('progressPercent');
+  const resultsArea = document.getElementById('resultsArea');
+  const errorArea = document.getElementById('errorArea');
+
+  resultsArea.classList.add('hidden');
+  errorArea.classList.add('hidden');
+  progressArea.classList.remove('hidden');
+  progressBar.className = 'h-full rounded-full progress-active';
+  progressBar.style.width = '0%';
+  progressStatus.textContent = '上传文件中...';
+  progressPercent.textContent = '0%';
+
+  // Build FormData
+  const fd = new FormData();
+  for (const f of selectedFiles) fd.append('files', f, f.name);
+  fd.append('engine', document.querySelector('input[name="engine"]:checked').value);
+  fd.append('api_key', document.getElementById('apiKey').value);
+  fd.append('model', document.getElementById('model').value);
+  fd.append('base_url', document.getElementById('baseUrl').value);
+  fd.append('lang_in', document.getElementById('langIn').value);
+  fd.append('lang_out', document.getElementById('langOut').value);
+  fd.append('dual', document.getElementById('dual').checked);
+  fd.append('mono', document.getElementById('mono').checked);
+  fd.append('watermark_mode', document.querySelector('input[name="watermark"]:checked').value);
+  fd.append('qps', document.getElementById('qps').value);
+  fd.append('pages', document.getElementById('pages').value);
+  fd.append('auto_glossary', document.getElementById('autoGlossary').checked);
+
+  try {
+    const resp = await fetch('/translate', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || '请求失败');
+    pollProgress(data.task_id);
+  } catch (err) {
+    showError(err.message);
+    btn.disabled = false;
+    btn.textContent = '开始翻译';
+  }
+});
+
+function pollProgress(taskId) {
+  const progressBar = document.getElementById('progressBar');
+  const progressStatus = document.getElementById('progressStatus');
+  const progressPercent = document.getElementById('progressPercent');
+
+  let smoothTarget = 0;
+  let smoothCurrent = 0;
+  let animFrame = null;
+  let creeping = false;
+
+  // Smoothly creep progress toward a target while no backend updates arrive
+  function startCreep(cap, label) {
+    creeping = true;
+    progressStatus.textContent = label;
+    const creepTarget = () => {
+      if (!creeping) return;
+      // Drift target slowly toward cap — faster when farther behind
+      const gap = cap - smoothTarget;
+      if (gap > 1) smoothTarget += Math.max(1, gap * 0.03);
+      if (animFrame) animFrame = requestAnimationFrame(creepTarget);
+    };
+    creepTarget();
+  }
+
+  function stopCreep() {
+    creeping = false;
+    if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+  }
+
+  // Render loop — runs while polling is active
+  function renderLoop() {
+    smoothCurrent += (smoothTarget - smoothCurrent) * 0.15;
+    if (Math.abs(smoothCurrent - smoothTarget) < 0.1) smoothCurrent = smoothTarget;
+    const pct = Math.round(smoothCurrent);
+    progressBar.style.width = pct + '%';
+    progressPercent.textContent = pct + '%';
+    if (smoothCurrent < smoothTarget || creeping) {
+      animFrame = requestAnimationFrame(renderLoop);
+    }
+  }
+
+  const fn = async () => {
+    try {
+      const resp = await fetch('/progress/' + taskId);
+      const data = await resp.json();
+
+      if (data.status === 'not_found') {
+        showError('任务不存在');
+        return;
+      }
+
+      // Update target from real backend value
+      const backendPct = (data.progress || 0) * 100;
+      if (backendPct > smoothTarget) smoothTarget = backendPct;
+      if (!animFrame) animFrame = requestAnimationFrame(renderLoop);
+
+      if (data.status === 'loading_model') {
+        startCreep(10, '加载 OCR 模型中...');
+        setTimeout(fn, 400);
+      } else if (data.status && data.status.startsWith('translating_')) {
+        const parts = data.status.split('_');
+        startCreep(90, `翻译中 (${parts[1]}/${parts[2]})`);
+        setTimeout(fn, 800);
+      } else if (data.status === 'completed') {
+        stopCreep();
+        smoothTarget = 100;
+        if (!animFrame) animFrame = requestAnimationFrame(renderLoop);
+        // After render catches up, switch to green
+        setTimeout(() => {
+          progressBar.className = 'h-full rounded-full bg-green-500';
+          progressStatus.textContent = '翻译完成';
+          showResults(data.results);
+        }, 400);
+      } else if (data.status === 'error') {
+        stopCreep();
+        progressBar.className = 'h-full rounded-full bg-red-500';
+        showError(data.error || '翻译失败');
+      } else {
+        setTimeout(fn, 500);
+      }
+    } catch (err) {
+      showError('网络错误: ' + err.message);
+    }
+  };
+  fn();
+}
+
+function showResults(results) {
+  const area = document.getElementById('resultsArea');
+  const list = document.getElementById('resultsList');
+  const progressArea = document.getElementById('progressArea');
+  const btn = document.getElementById('translateBtn');
+
+  area.classList.remove('hidden');
+  list.innerHTML = results.map(r =>
+    `<div class="flex items-center gap-3 p-3 rounded-lg bg-white/40 hover:bg-white/60 transition-all">
+      <span>📄</span>
+      <span class="text-[#1a1d26] flex-1 truncate">${r.name}</span>
+      <a href="/download/${r.path}" class="text-sm font-medium text-primary hover:text-primary-dark bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-lg transition-all shrink-0">下载</a>
+    </div>`
+  ).join('');
+  progressArea.classList.add('hidden');
+  btn.disabled = false;
+  btn.textContent = '开始翻译';
+}
+
+function showError(msg) {
+  const area = document.getElementById('errorArea');
+  const msgEl = document.getElementById('errorMsg');
+  const progressArea = document.getElementById('progressArea');
+  const btn = document.getElementById('translateBtn');
+
+  area.classList.remove('hidden');
+  msgEl.textContent = msg;
+  progressArea.classList.add('hidden');
+  btn.disabled = false;
+  btn.textContent = '开始翻译';
+}
+</script>
+</body>
+</html>
