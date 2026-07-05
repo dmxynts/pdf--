@@ -17,8 +17,8 @@
 ### 1. 克隆
 
 ```bash
-git clone https://github.com/dmxynts/pdf--.git
-cd pdf--
+git clone https://github.com/dmxynts/BabelDOC-WebUI.git
+cd BabelDOC-WebUI
 ```
 
 ### 2. 安装依赖
