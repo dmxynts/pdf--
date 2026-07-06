@@ -2,6 +2,8 @@
 
 基于 [BabelDOC](https://github.com/funstory-ai/BabelDOC) 的 PDF 翻译 Web 界面，保留原文排版，支持双语对照。
 
+![BabelDOC 界面](pic.png)
+
 ## 功能
 
 - 拖拽上传 PDF，支持批量翻译
