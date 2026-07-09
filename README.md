@@ -67,3 +67,7 @@ python app.py
 - **后端**: Python / FastAPI
 - **前端**: Jinja2 / Tailwind CSS
 - **翻译引擎**: BabelDOC
+
+## 已知问题
+
+- **中文 PDF 文字复制乱码**：翻译后的中文 PDF 屏幕显示正常，但选中复制粘贴后得到乱码。这是 BabelDOC 渲染中文字体时缺少正确的 ToUnicode 映射所致，并非本项目的 Bug。如需复制文字，可借助外部 OCR 工具（如 Adobe Acrobat OCR、Umi-OCR）对输出的 PDF 进行处理。

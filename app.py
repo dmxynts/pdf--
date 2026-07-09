@@ -110,7 +110,8 @@ async def translate(
 
     saved = []
     for f in files:
-        dest = UPLOAD_DIR / f.filename
+        name = f.filename.strip()
+        dest = UPLOAD_DIR / name
         content = await f.read()
         dest.write_bytes(content)
         saved.append(dest)
@@ -189,7 +190,7 @@ def _run_task(
                 tasks[task_id]["progress"] = p_base + 0.05
                 tasks[task_id]["status"] = f"translating_{i+1}_{len(file_paths)}"
 
-            out_dir = OUTPUT_DIR / pdf_path.stem
+            out_dir = OUTPUT_DIR / pdf_path.stem.strip()
             out_dir.mkdir(exist_ok=True)
 
             config = TranslationConfig(
